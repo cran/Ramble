@@ -1,0 +1,332 @@
+---
+title: "Higher-Order Functions for Parsing in R"
+author: "Chapman Siu"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\usepackage[utf8]{inputenc}
+---
+
+# Introduction
+
+A parser is any program which analyses text to determine its logical structure. For example, the parser phase in a compiler takes a program text, and produces a parse tree which expounds the structure of the program. The form of this input is usually defined by a context-free grammar, using BNF notation. Prasers themselves may be built by hand, but are most often generated automatically using tools like Lex and Yacc from Unix (Aho86).
+
+Combinatory parsing is a technique which has been explored in functional languages such as Miranda (Hutton92). Combinator parsing is able to handle ambiguous grammars, and providing full backtracking if it is needed. It can go beyond simply parsing, but even adding semantic actions, allowing their results to manipulated in any way we please. 
+
+This paper will apply techniques discussed in (Hutton92) in the context of the functional parts of the R programming language. 
+
+# Functional Parts of R 
+
+## Closures
+
+R, at its heart is a functional programming language (Wickham14). R has what is known as first class functions; meaning functions can be passed as arguments to other functions, returning them from other functions, assigning them to variables and stored in data structures. 
+
+Functions can be written by other functions, this is known as closures. In the following example (Wickham14) we can generate a family of power functions in which a parent function `(power())` creates two child functions (`square()` and `cube()`).
+
+```{r closure-example}
+power <- function(exponent) {
+  function(x) {
+    x ^ exponent
+  }
+}
+square <- power(2)
+square(2)
+cube <- power(3)
+cube(2)
+```
+
+# Parsing using Combinators
+
+We will first consider the _type_ of parser. A parser may be viewed as a function from a string of symbols to a result value. Since a parser might not consume the entire string, part of this result will be a suffix of the input string. Sometimes a parser may not be able to produce a result at all. For example, it may be expecting a letter, but find a digit. Rather than define a special type for the success or failure of a parser, we choose to have parsers return a list of pairs as their result, with the empty list `list()` denoting failure, and a list of lists `list(result=v, leftover=xs)` indicating success, with value `v` and unconsumed input `xs`. 
+
+Since we want to specify the type of any parser, regardless of the kind of symbols and results involved, this means we must use a heterogeneous data structure. Compared with Miranda, R treats its data structures in different manner. For example, the idea of a tuple does not exist within R. Data types can be divided into five different groups (Wickham14):
+
+    **Homogeneous** **Heterogeneous**  
+--- --------------- ----------------- 
+1d  Atomic Vector      List              
+2d  Matrix             Data Frame        
+nd  Array                            
+--- --------------- ----------------- 
+
+This means that the value `v`, which indicates success **must** be a list of lists, since this value may be heterogeneous. 
+
+## Primitive parsers
+
+`succeed` is based on the empty string symbol in the BNF notation The `succeed` parser always succeeds, without actually consuming any input string. Since the outcome of succeed does not depend on its input, its resultvalue must be pre-detemined, so it is included as an extra parameter.
+
+```{r, succeed}
+succeed <- function(string) {
+  return(function(nextString) {
+    return(list(result = string, leftover=nextString))
+  })
+}
+succeed("1") ("abc")
+```
+
+The next function `item`, allows us to consume the first character of the string and return the rest. If it cannot consume a single character from the string it will emit the empty list, indicating the parser has failed. 
+
+```{r, item}
+item <- function(...){
+  return(function(string){
+    if(length(string)==0){return(NULL)}
+    return (if(string=="") list() else list(result=substr(string, 1, 1), leftover=substring(string, 2)))
+  })
+}
+item() ("abc")
+```
+
+`item` can be further rewritten in a more useful way. The `satisfy` function allows us to make parsers that recognise single symbols. Rather than enumerating the acceptable symbols, we will allow a predicate to be set, which determines if an arbitary symbol is a member. Successful parses return the consumed symbol as their result value.
+
+```{r, satisfy}
+satisfy <- function(p) {
+  return(function(string) {
+    if (length(string)==0) {
+      return(list())
+    }
+    else if (string==""){
+      return(list())
+    }
+    else {
+      result_ = list(result=substr(string, 1, 1), leftover=substring(string, 2))
+      if (p(result_$result)) {
+        return(succeed(result_$result)(result_$leftover))
+      }
+      else{
+        return(list())
+      }
+    }    
+  })
+}
+satisfy(function(x) {x == "a"}) ("abc")
+```
+
+Using `satisfy` we can define a parser for single symbols:
+
+```{r, literal}
+literal <- function(char) {
+  satisfy(function(x){return(x==char)})
+}
+literal("a") ("abc")
+```
+
+## Combinators
+
+Now that we have the basic building blocks, we consider how they should be put together to form useful parsers. In BNF notation, larger grammars are built price-wise from smaller ones using `|` to denote alternation, and juxtaposition to indicate sequencing. So taht our parasers resemble BNF notation, we define higher order functions which correspond directly to these operators. Since higher order functions like these combine parsers to form other parsers, they are often referreedto as combinators.
+
+The `alt` combinator corresponds to alternation in BNF. The parser `alt(p1, p2)` recognises anything that `p1` or `p2` would. The approach taken in this parser follows (Fairbairn86), in which either is interpretted in a sequential (or exclusive) manner, returning the results of the first parser to succeed, and failure if neither does. Note that we use the infix notation ``` `%f%` ``` to convert `alt` to an infix operator. The infix notation is merely a syntactic convenience: ```(a `%f%` b)``` is equivalent to `(f (a,b))`. 
+
+```{r, alt}
+alt <- function(p1, p2) {
+  return(function(string){
+    result <- p1 (string)
+    if(!is.null(result$leftover)) {return(result)}
+    else{
+      return(p2 (string))
+    }
+  })
+}
+`%alt%` <- alt
+(item() %alt% succeed("2"))("abcdef")
+alt(item(), succeed("2")) ("abcdef")
+```
+  
+The `then` combinator corresponds to sequencing in BNF. The parser(`p1 %then% p2`) recognises anything that `p1` and `p2` would if placed in succession.
+
+```{r, then}
+then <- function(p1, p2) {
+  return(function(string) {
+    result <- p1 (string)
+    if (length(result) == 0) {
+      return (list())
+    }
+    else {
+      result_ <- p2 (result$leftover)
+      if (length(result_$leftover) == 0 || is.null(result_$leftover)) {return(list())}
+      return(list(result=append(list(result$result), result_$result), leftover=result_$leftover))
+    }
+  })
+}
+`%then%` <- then
+(literal("a") %then% literal("b")) ("abc")
+```
+
+## Manipulating Values
+
+Part of the result from a parser is a value. The `using` combinator allows us to manipulate these results, building a parse tree being the most common application. The parser(`p %using% f`) has the same behaviour as the parser `p`, except that the function `f` is aplied to each of the result values:
+
+```{r, using}
+using <- function(p, f) {
+  return(function(string) {
+    result <- p (string) 
+    if(length(result) == 0) {return(list())}
+    return(list(result=f(result$result),
+                leftover=result$leftover))
+  })
+}
+`%using%` <- using
+(item() %using% function(x) {as.numeric(x) + 100}) ("1abc")
+```
+
+Although `using` has no counterpart in pure BNF notation, it does have much in common with the `{...}` operator in Yacc (Aho86). In fact, the `using` combinator does not restrict us to building parse trees. Arbitrary semantic actions can be used. 
+
+In BNF notation, repetition occurs often enough to merit its own abbreviation. When zero or more repetitions of a phrase `p` are admissible, we simply write `p*`. Formally, this notation is defined by the equation `p* = p p * | e`. The `many` combinator corresponds directly to this operator, and is defined in much the same way:
+
+```{r, many}
+many <- function(p) {
+  return(function(string) {
+    ((p %then% many(p)) %alt% succeed(NULL)) (string)
+  })
+}
+many(literal("1")) ("111223")
+```
+
+Nor surprisingly, the next parser corresponds to the other common iterative form in BNF, defined by `p+ = p p*`. The parser (`some p`) has the same behaviour as (`many p`), except that it accepts one or more repetitions of `p`, rather of zero or more: 
+
+```{r, some}
+some <- function(p) {
+  return(function(string){
+    (p %then% many(p)) (string)
+  })
+}
+some(literal("a"))("aaabbc")
+```
+
+Note that (`some p`) may fail, whereas (`many p`) always succeeds. 
+
+## Derived Primitives
+
+Using the basic parsers together with sequencing and choice, we can now define a number of other useful parsing primitives. 
+
+Firstly using `satisfy` with the appropriate predicates, we can define parsers for single digits, lower-case letters, upper-case letters, arbitrary letters, alphanumeric characters, and specific characters. We have already demonstrated how we can parser specific characters (see `literal`), but the others can be defined in a similar way:
+
+```{r, derived}
+Digit <- function(...) {satisfy(function(x) {return(!!length(grep("[0-9]", x)))})}
+Lower <- function(...) {satisfy(function(x) {return(!!length(grep("[a-z]", x)))})}
+Upper <- function(...) satisfy(function(x) {return(!!length(grep("[A-Z]", x)))})
+Alpha <- function(...) satisfy(function(x) {return(!!length(grep("[A-Za-z]", x)))})
+AlphaNum <- function(...) satisfy(function(x) {return(!!length(grep("[A-Za-z0-9]", x)))})
+SpaceCheck <- function(...) satisfy(function(x) {return(!!length(grep("\\s", x)))})
+```
+
+In a similar many we can define a parser `String` for the string of characters, with the string itself returned as the result value:
+
+```{r, String}
+String <- function(string) {
+  if (string=="") {
+    return (succeed(NULL))
+  }
+  else {
+    result_=substr(string, 1, 1)
+    leftover_=substring(string, 2)
+    return((literal(result_) %then% 
+            String(leftover_)) %using% 
+             function(x) {paste(unlist(c(x)), collapse="")})
+  }
+}
+String("123")("123 abc")
+```
+
+Note that `String` is defined using recursion, and only succeeds if the entire target string is consumed. The base case states that the empty string is always parsed. The recursive case states that a non-empty string can be parsed by parsing the first character, parsing the remaining characters, and returning the entire string as the result value.
+
+Similarly we can create parsers to match identifiers (`ident`), natural numbers (`nat`), spaces (`space`):
+
+```{r, ident}
+ident <- function() {(many(AlphaNum()) %using%
+          function(x) paste0(unlist(c(x)), collapse=""))}
+nat <- function() {
+  some(Digit()) %using%
+  function(x) {paste(unlist(c(x)), collapse="")}
+}
+space <- function() {
+  many(SpaceCheck()) %using%
+  function(x) {return("")}
+}
+ident() ("var1 = 123")
+nat() ("123456")
+```
+
+## Handling spacing
+
+To handle spaces we will define a new primitive `token` which ignores any space before and after applying a parser for a token:
+
+```{r, token}
+token <- function(p) {
+  space() %then%
+    p %then%
+    space() %using%
+    function(x) {return(unlist(c(x))[2])}
+}
+token(ident()) ("   var1   ")
+```
+This can then be expanded for identifiers, natural numbers and symbols:
+
+```{r, identifier}
+identifier <- function(...) {token(ident())}
+natural <- function(...) {token(nat())}
+symbol <- function(xs) {token(String(xs))}
+identifier() ("   var1   ")
+```
+
+# Example
+
+To conclude our introduction to combinator parsing, we will work through the derivation of a simple parser. Suppose we have a program which works with arithmetic expressions, defined as follows:
+
+```
+Example with expressions, will not be exported
+expression example
+expr :: = term + term | term - term | term
+term :: = factor * factor | factor / factor | factor
+factor :: = (expr) | digit+
+```
+
+Having this structure allows multiplication and divsion to have higher precedence than addition and subtraction. We can simply rewrite the BNF grammar above as follows:
+
+```{r, arith}
+expr <- ((term %then% 
+            symbol("+") %then%
+            expr %using% function(x) {
+              print(unlist(c(x)))
+              return(sum(as.numeric(unlist(c(x))[c(1,3)])))
+            }) %alt% 
+          (term %then% 
+            symbol("-") %then%
+            expr %using% function(x) {
+              print(unlist(c(x)))
+              return(Reduce("-", as.numeric(unlist(c(x))[c(1,3)])))
+            }) %alt% term)
+
+
+term <- ((factor %then% 
+            symbol("*") %then%
+              term %using% function(x) {
+                print(unlist(c(x)))
+                return(prod(as.numeric(unlist(c(x))[c(1,3)])))
+              }) %alt% 
+         (factor %then% 
+           symbol("/") %then%
+           term %using% function(x) {
+             print(unlist(c(x)))
+             return(Reduce("/", as.numeric(unlist(c(x))[c(1,3)])))
+          }) %alt% factor)
+
+factor <- ((symbol("(") %then%
+            expr %then%
+            symbol(")") %using% function(x){
+              print(unlist(c(x)))
+              return(as.numeric(unlist(c(x))[2]))
+            }) %alt% natural())
+```
+
+This will evaluate the arithmetic expressions:
+
+```{r, exp}
+expr("2+(4-1)*3")
+```
+
+
+
+
+
+
