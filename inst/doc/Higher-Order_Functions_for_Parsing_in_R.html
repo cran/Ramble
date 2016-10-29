@@ -12,7 +12,7 @@
 
 <meta name="author" content="Chapman Siu" />
 
-<meta name="date" content="2016-05-21" />
+<meta name="date" content="2016-10-29" />
 
 <title>Higher-Order Functions for Parsing in R</title>
 
@@ -20,28 +20,46 @@
 
 <style type="text/css">code{white-space: pre;}</style>
 <style type="text/css">
+div.sourceCode { overflow-x: auto; }
 table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
   margin: 0; padding: 0; vertical-align: baseline; border: none; }
 table.sourceCode { width: 100%; line-height: 100%; }
 td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
 td.sourceCode { padding-left: 5px; }
-code > span.kw { color: #007020; font-weight: bold; }
-code > span.dt { color: #902000; }
-code > span.dv { color: #40a070; }
-code > span.bn { color: #40a070; }
-code > span.fl { color: #40a070; }
-code > span.ch { color: #4070a0; }
-code > span.st { color: #4070a0; }
-code > span.co { color: #60a0b0; font-style: italic; }
-code > span.ot { color: #007020; }
-code > span.al { color: #ff0000; font-weight: bold; }
-code > span.fu { color: #06287e; }
-code > span.er { color: #ff0000; font-weight: bold; }
+code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code > span.dt { color: #902000; } /* DataType */
+code > span.dv { color: #40a070; } /* DecVal */
+code > span.bn { color: #40a070; } /* BaseN */
+code > span.fl { color: #40a070; } /* Float */
+code > span.ch { color: #4070a0; } /* Char */
+code > span.st { color: #4070a0; } /* String */
+code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code > span.ot { color: #007020; } /* Other */
+code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code > span.fu { color: #06287e; } /* Function */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #880000; } /* Constant */
+code > span.sc { color: #4070a0; } /* SpecialChar */
+code > span.vs { color: #4070a0; } /* VerbatimString */
+code > span.ss { color: #bb6688; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #19177c; } /* Variable */
+code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #666666; } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #bc7a00; } /* Preprocessor */
+code > span.at { color: #7d9029; } /* Attribute */
+code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
 </style>
 
 
 
-<link href="data:text/css,body%20%7B%0A%20%20background%2Dcolor%3A%20%23fff%3B%0A%20%20margin%3A%201em%20auto%3B%0A%20%20max%2Dwidth%3A%20700px%3B%0A%20%20overflow%3A%20visible%3B%0A%20%20padding%2Dleft%3A%202em%3B%0A%20%20padding%2Dright%3A%202em%3B%0A%20%20font%2Dfamily%3A%20%22Open%20Sans%22%2C%20%22Helvetica%20Neue%22%2C%20Helvetica%2C%20Arial%2C%20sans%2Dserif%3B%0A%20%20font%2Dsize%3A%2014px%3B%0A%20%20line%2Dheight%3A%201%2E35%3B%0A%7D%0A%0A%23header%20%7B%0A%20%20text%2Dalign%3A%20center%3B%0A%7D%0A%0A%23TOC%20%7B%0A%20%20clear%3A%20both%3B%0A%20%20margin%3A%200%200%2010px%2010px%3B%0A%20%20padding%3A%204px%3B%0A%20%20width%3A%20400px%3B%0A%20%20border%3A%201px%20solid%20%23CCCCCC%3B%0A%20%20border%2Dradius%3A%205px%3B%0A%0A%20%20background%2Dcolor%3A%20%23f6f6f6%3B%0A%20%20font%2Dsize%3A%2013px%3B%0A%20%20line%2Dheight%3A%201%2E3%3B%0A%7D%0A%20%20%23TOC%20%2Etoctitle%20%7B%0A%20%20%20%20font%2Dweight%3A%20bold%3B%0A%20%20%20%20font%2Dsize%3A%2015px%3B%0A%20%20%20%20margin%2Dleft%3A%205px%3B%0A%20%20%7D%0A%0A%20%20%23TOC%20ul%20%7B%0A%20%20%20%20padding%2Dleft%3A%2040px%3B%0A%20%20%20%20margin%2Dleft%3A%20%2D1%2E5em%3B%0A%20%20%20%20margin%2Dtop%3A%205px%3B%0A%20%20%20%20margin%2Dbottom%3A%205px%3B%0A%20%20%7D%0A%20%20%23TOC%20ul%20ul%20%7B%0A%20%20%20%20margin%2Dleft%3A%20%2D2em%3B%0A%20%20%7D%0A%20%20%23TOC%20li%20%7B%0A%20%20%20%20line%2Dheight%3A%2016px%3B%0A%20%20%7D%0A%0Atable%20%7B%0A%20%20margin%3A%201em%20auto%3B%0A%20%20border%2Dwidth%3A%201px%3B%0A%20%20border%2Dcolor%3A%20%23DDDDDD%3B%0A%20%20border%2Dstyle%3A%20outset%3B%0A%20%20border%2Dcollapse%3A%20collapse%3B%0A%7D%0Atable%20th%20%7B%0A%20%20border%2Dwidth%3A%202px%3B%0A%20%20padding%3A%205px%3B%0A%20%20border%2Dstyle%3A%20inset%3B%0A%7D%0Atable%20td%20%7B%0A%20%20border%2Dwidth%3A%201px%3B%0A%20%20border%2Dstyle%3A%20inset%3B%0A%20%20line%2Dheight%3A%2018px%3B%0A%20%20padding%3A%205px%205px%3B%0A%7D%0Atable%2C%20table%20th%2C%20table%20td%20%7B%0A%20%20border%2Dleft%2Dstyle%3A%20none%3B%0A%20%20border%2Dright%2Dstyle%3A%20none%3B%0A%7D%0Atable%20thead%2C%20table%20tr%2Eeven%20%7B%0A%20%20background%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0A%0Ap%20%7B%0A%20%20margin%3A%200%2E5em%200%3B%0A%7D%0A%0Ablockquote%20%7B%0A%20%20background%2Dcolor%3A%20%23f6f6f6%3B%0A%20%20padding%3A%200%2E25em%200%2E75em%3B%0A%7D%0A%0Ahr%20%7B%0A%20%20border%2Dstyle%3A%20solid%3B%0A%20%20border%3A%20none%3B%0A%20%20border%2Dtop%3A%201px%20solid%20%23777%3B%0A%20%20margin%3A%2028px%200%3B%0A%7D%0A%0Adl%20%7B%0A%20%20margin%2Dleft%3A%200%3B%0A%7D%0A%20%20dl%20dd%20%7B%0A%20%20%20%20margin%2Dbottom%3A%2013px%3B%0A%20%20%20%20margin%2Dleft%3A%2013px%3B%0A%20%20%7D%0A%20%20dl%20dt%20%7B%0A%20%20%20%20font%2Dweight%3A%20bold%3B%0A%20%20%7D%0A%0Aul%20%7B%0A%20%20margin%2Dtop%3A%200%3B%0A%7D%0A%20%20ul%20li%20%7B%0A%20%20%20%20list%2Dstyle%3A%20circle%20outside%3B%0A%20%20%7D%0A%20%20ul%20ul%20%7B%0A%20%20%20%20margin%2Dbottom%3A%200%3B%0A%20%20%7D%0A%0Apre%2C%20code%20%7B%0A%20%20background%2Dcolor%3A%20%23f7f7f7%3B%0A%20%20border%2Dradius%3A%203px%3B%0A%20%20color%3A%20%23333%3B%0A%20%20white%2Dspace%3A%20pre%2Dwrap%3B%20%20%20%20%2F%2A%20Wrap%20long%20lines%20%2A%2F%0A%7D%0Apre%20%7B%0A%20%20border%2Dradius%3A%203px%3B%0A%20%20margin%3A%205px%200px%2010px%200px%3B%0A%20%20padding%3A%2010px%3B%0A%7D%0Apre%3Anot%28%5Bclass%5D%29%20%7B%0A%20%20background%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0A%0Acode%20%7B%0A%20%20font%2Dfamily%3A%20Consolas%2C%20Monaco%2C%20%27Courier%20New%27%2C%20monospace%3B%0A%20%20font%2Dsize%3A%2085%25%3B%0A%7D%0Ap%20%3E%20code%2C%20li%20%3E%20code%20%7B%0A%20%20padding%3A%202px%200px%3B%0A%7D%0A%0Adiv%2Efigure%20%7B%0A%20%20text%2Dalign%3A%20center%3B%0A%7D%0Aimg%20%7B%0A%20%20background%2Dcolor%3A%20%23FFFFFF%3B%0A%20%20padding%3A%202px%3B%0A%20%20border%3A%201px%20solid%20%23DDDDDD%3B%0A%20%20border%2Dradius%3A%203px%3B%0A%20%20border%3A%201px%20solid%20%23CCCCCC%3B%0A%20%20margin%3A%200%205px%3B%0A%7D%0A%0Ah1%20%7B%0A%20%20margin%2Dtop%3A%200%3B%0A%20%20font%2Dsize%3A%2035px%3B%0A%20%20line%2Dheight%3A%2040px%3B%0A%7D%0A%0Ah2%20%7B%0A%20%20border%2Dbottom%3A%204px%20solid%20%23f7f7f7%3B%0A%20%20padding%2Dtop%3A%2010px%3B%0A%20%20padding%2Dbottom%3A%202px%3B%0A%20%20font%2Dsize%3A%20145%25%3B%0A%7D%0A%0Ah3%20%7B%0A%20%20border%2Dbottom%3A%202px%20solid%20%23f7f7f7%3B%0A%20%20padding%2Dtop%3A%2010px%3B%0A%20%20font%2Dsize%3A%20120%25%3B%0A%7D%0A%0Ah4%20%7B%0A%20%20border%2Dbottom%3A%201px%20solid%20%23f7f7f7%3B%0A%20%20margin%2Dleft%3A%208px%3B%0A%20%20font%2Dsize%3A%20105%25%3B%0A%7D%0A%0Ah5%2C%20h6%20%7B%0A%20%20border%2Dbottom%3A%201px%20solid%20%23ccc%3B%0A%20%20font%2Dsize%3A%20105%25%3B%0A%7D%0A%0Aa%20%7B%0A%20%20color%3A%20%230033dd%3B%0A%20%20text%2Ddecoration%3A%20none%3B%0A%7D%0A%20%20a%3Ahover%20%7B%0A%20%20%20%20color%3A%20%236666ff%3B%20%7D%0A%20%20a%3Avisited%20%7B%0A%20%20%20%20color%3A%20%23800080%3B%20%7D%0A%20%20a%3Avisited%3Ahover%20%7B%0A%20%20%20%20color%3A%20%23BB00BB%3B%20%7D%0A%20%20a%5Bhref%5E%3D%22http%3A%22%5D%20%7B%0A%20%20%20%20text%2Ddecoration%3A%20underline%3B%20%7D%0A%20%20a%5Bhref%5E%3D%22https%3A%22%5D%20%7B%0A%20%20%20%20text%2Ddecoration%3A%20underline%3B%20%7D%0A%0A%2F%2A%20Class%20described%20in%20https%3A%2F%2Fbenjeffrey%2Ecom%2Fposts%2Fpandoc%2Dsyntax%2Dhighlighting%2Dcss%0A%20%20%20Colours%20from%20https%3A%2F%2Fgist%2Egithub%2Ecom%2Frobsimmons%2F1172277%20%2A%2F%0A%0Acode%20%3E%20span%2Ekw%20%7B%20color%3A%20%23555%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%2F%2A%20Keyword%20%2A%2F%0Acode%20%3E%20span%2Edt%20%7B%20color%3A%20%23902000%3B%20%7D%20%2F%2A%20DataType%20%2A%2F%0Acode%20%3E%20span%2Edv%20%7B%20color%3A%20%2340a070%3B%20%7D%20%2F%2A%20DecVal%20%28decimal%20values%29%20%2A%2F%0Acode%20%3E%20span%2Ebn%20%7B%20color%3A%20%23d14%3B%20%7D%20%2F%2A%20BaseN%20%2A%2F%0Acode%20%3E%20span%2Efl%20%7B%20color%3A%20%23d14%3B%20%7D%20%2F%2A%20Float%20%2A%2F%0Acode%20%3E%20span%2Ech%20%7B%20color%3A%20%23d14%3B%20%7D%20%2F%2A%20Char%20%2A%2F%0Acode%20%3E%20span%2Est%20%7B%20color%3A%20%23d14%3B%20%7D%20%2F%2A%20String%20%2A%2F%0Acode%20%3E%20span%2Eco%20%7B%20color%3A%20%23888888%3B%20font%2Dstyle%3A%20italic%3B%20%7D%20%2F%2A%20Comment%20%2A%2F%0Acode%20%3E%20span%2Eot%20%7B%20color%3A%20%23007020%3B%20%7D%20%2F%2A%20OtherToken%20%2A%2F%0Acode%20%3E%20span%2Eal%20%7B%20color%3A%20%23ff0000%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%2F%2A%20AlertToken%20%2A%2F%0Acode%20%3E%20span%2Efu%20%7B%20color%3A%20%23900%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%2F%2A%20Function%20calls%20%2A%2F%20%0Acode%20%3E%20span%2Eer%20%7B%20color%3A%20%23a61717%3B%20background%2Dcolor%3A%20%23e3d2d2%3B%20%7D%20%2F%2A%20ErrorTok%20%2A%2F%0A%0A" rel="stylesheet" type="text/css" />
+<link href="data:text/css;charset=utf-8,body%20%7B%0Abackground%2Dcolor%3A%20%23fff%3B%0Amargin%3A%201em%20auto%3B%0Amax%2Dwidth%3A%20700px%3B%0Aoverflow%3A%20visible%3B%0Apadding%2Dleft%3A%202em%3B%0Apadding%2Dright%3A%202em%3B%0Afont%2Dfamily%3A%20%22Open%20Sans%22%2C%20%22Helvetica%20Neue%22%2C%20Helvetica%2C%20Arial%2C%20sans%2Dserif%3B%0Afont%2Dsize%3A%2014px%3B%0Aline%2Dheight%3A%201%2E35%3B%0A%7D%0A%23header%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0A%23TOC%20%7B%0Aclear%3A%20both%3B%0Amargin%3A%200%200%2010px%2010px%3B%0Apadding%3A%204px%3B%0Awidth%3A%20400px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Aborder%2Dradius%3A%205px%3B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Afont%2Dsize%3A%2013px%3B%0Aline%2Dheight%3A%201%2E3%3B%0A%7D%0A%23TOC%20%2Etoctitle%20%7B%0Afont%2Dweight%3A%20bold%3B%0Afont%2Dsize%3A%2015px%3B%0Amargin%2Dleft%3A%205px%3B%0A%7D%0A%23TOC%20ul%20%7B%0Apadding%2Dleft%3A%2040px%3B%0Amargin%2Dleft%3A%20%2D1%2E5em%3B%0Amargin%2Dtop%3A%205px%3B%0Amargin%2Dbottom%3A%205px%3B%0A%7D%0A%23TOC%20ul%20ul%20%7B%0Amargin%2Dleft%3A%20%2D2em%3B%0A%7D%0A%23TOC%20li%20%7B%0Aline%2Dheight%3A%2016px%3B%0A%7D%0Atable%20%7B%0Amargin%3A%201em%20auto%3B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dcolor%3A%20%23DDDDDD%3B%0Aborder%2Dstyle%3A%20outset%3B%0Aborder%2Dcollapse%3A%20collapse%3B%0A%7D%0Atable%20th%20%7B%0Aborder%2Dwidth%3A%202px%3B%0Apadding%3A%205px%3B%0Aborder%2Dstyle%3A%20inset%3B%0A%7D%0Atable%20td%20%7B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dstyle%3A%20inset%3B%0Aline%2Dheight%3A%2018px%3B%0Apadding%3A%205px%205px%3B%0A%7D%0Atable%2C%20table%20th%2C%20table%20td%20%7B%0Aborder%2Dleft%2Dstyle%3A%20none%3B%0Aborder%2Dright%2Dstyle%3A%20none%3B%0A%7D%0Atable%20thead%2C%20table%20tr%2Eeven%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Ap%20%7B%0Amargin%3A%200%2E5em%200%3B%0A%7D%0Ablockquote%20%7B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Apadding%3A%200%2E25em%200%2E75em%3B%0A%7D%0Ahr%20%7B%0Aborder%2Dstyle%3A%20solid%3B%0Aborder%3A%20none%3B%0Aborder%2Dtop%3A%201px%20solid%20%23777%3B%0Amargin%3A%2028px%200%3B%0A%7D%0Adl%20%7B%0Amargin%2Dleft%3A%200%3B%0A%7D%0Adl%20dd%20%7B%0Amargin%2Dbottom%3A%2013px%3B%0Amargin%2Dleft%3A%2013px%3B%0A%7D%0Adl%20dt%20%7B%0Afont%2Dweight%3A%20bold%3B%0A%7D%0Aul%20%7B%0Amargin%2Dtop%3A%200%3B%0A%7D%0Aul%20li%20%7B%0Alist%2Dstyle%3A%20circle%20outside%3B%0A%7D%0Aul%20ul%20%7B%0Amargin%2Dbottom%3A%200%3B%0A%7D%0Apre%2C%20code%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0Aborder%2Dradius%3A%203px%3B%0Acolor%3A%20%23333%3B%0Awhite%2Dspace%3A%20pre%2Dwrap%3B%20%0A%7D%0Apre%20%7B%0Aborder%2Dradius%3A%203px%3B%0Amargin%3A%205px%200px%2010px%200px%3B%0Apadding%3A%2010px%3B%0A%7D%0Apre%3Anot%28%5Bclass%5D%29%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Acode%20%7B%0Afont%2Dfamily%3A%20Consolas%2C%20Monaco%2C%20%27Courier%20New%27%2C%20monospace%3B%0Afont%2Dsize%3A%2085%25%3B%0A%7D%0Ap%20%3E%20code%2C%20li%20%3E%20code%20%7B%0Apadding%3A%202px%200px%3B%0A%7D%0Adiv%2Efigure%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0Aimg%20%7B%0Abackground%2Dcolor%3A%20%23FFFFFF%3B%0Apadding%3A%202px%3B%0Aborder%3A%201px%20solid%20%23DDDDDD%3B%0Aborder%2Dradius%3A%203px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Amargin%3A%200%205px%3B%0A%7D%0Ah1%20%7B%0Amargin%2Dtop%3A%200%3B%0Afont%2Dsize%3A%2035px%3B%0Aline%2Dheight%3A%2040px%3B%0A%7D%0Ah2%20%7B%0Aborder%2Dbottom%3A%204px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Apadding%2Dbottom%3A%202px%3B%0Afont%2Dsize%3A%20145%25%3B%0A%7D%0Ah3%20%7B%0Aborder%2Dbottom%3A%202px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Afont%2Dsize%3A%20120%25%3B%0A%7D%0Ah4%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23f7f7f7%3B%0Amargin%2Dleft%3A%208px%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Ah5%2C%20h6%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23ccc%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Aa%20%7B%0Acolor%3A%20%230033dd%3B%0Atext%2Ddecoration%3A%20none%3B%0A%7D%0Aa%3Ahover%20%7B%0Acolor%3A%20%236666ff%3B%20%7D%0Aa%3Avisited%20%7B%0Acolor%3A%20%23800080%3B%20%7D%0Aa%3Avisited%3Ahover%20%7B%0Acolor%3A%20%23BB00BB%3B%20%7D%0Aa%5Bhref%5E%3D%22http%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0Aa%5Bhref%5E%3D%22https%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0A%0Acode%20%3E%20span%2Ekw%20%7B%20color%3A%20%23555%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Edt%20%7B%20color%3A%20%23902000%3B%20%7D%20%0Acode%20%3E%20span%2Edv%20%7B%20color%3A%20%2340a070%3B%20%7D%20%0Acode%20%3E%20span%2Ebn%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Efl%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Ech%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Est%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Eco%20%7B%20color%3A%20%23888888%3B%20font%2Dstyle%3A%20italic%3B%20%7D%20%0Acode%20%3E%20span%2Eot%20%7B%20color%3A%20%23007020%3B%20%7D%20%0Acode%20%3E%20span%2Eal%20%7B%20color%3A%20%23ff0000%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Efu%20%7B%20color%3A%20%23900%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%20code%20%3E%20span%2Eer%20%7B%20color%3A%20%23a61717%3B%20background%2Dcolor%3A%20%23e3d2d2%3B%20%7D%20%0A" rel="stylesheet" type="text/css" />
 
 </head>
 
@@ -52,7 +70,7 @@ code > span.er { color: #ff0000; font-weight: bold; }
 
 <h1 class="title toc-ignore">Higher-Order Functions for Parsing in R</h1>
 <h4 class="author"><em>Chapman Siu</em></h4>
-<h4 class="date"><em>2016-05-21</em></h4>
+<h4 class="date"><em>2016-10-29</em></h4>
 
 
 
@@ -68,16 +86,16 @@ code > span.er { color: #ff0000; font-weight: bold; }
 <h2>Closures</h2>
 <p>R, at its heart is a functional programming language (Wickham14). R has what is known as first class functions; meaning functions can be passed as arguments to other functions, returning them from other functions, assigning them to variables and stored in data structures.</p>
 <p>Functions can be written by other functions, this is known as closures. In the following example (Wickham14) we can generate a family of power functions in which a parent function <code>(power())</code> creates two child functions (<code>square()</code> and <code>cube()</code>).</p>
-<pre class="sourceCode r"><code class="sourceCode r">power &lt;-<span class="st"> </span>function(exponent) {
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">power &lt;-<span class="st"> </span>function(exponent) {
   function(x) {
     x ^<span class="st"> </span>exponent
   }
 }
 square &lt;-<span class="st"> </span><span class="kw">power</span>(<span class="dv">2</span>)
-<span class="kw">square</span>(<span class="dv">2</span>)</code></pre>
+<span class="kw">square</span>(<span class="dv">2</span>)</code></pre></div>
 <pre><code>## [1] 4</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r">cube &lt;-<span class="st"> </span><span class="kw">power</span>(<span class="dv">3</span>)
-<span class="kw">cube</span>(<span class="dv">2</span>)</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">cube &lt;-<span class="st"> </span><span class="kw">power</span>(<span class="dv">3</span>)
+<span class="kw">cube</span>(<span class="dv">2</span>)</code></pre></div>
 <pre><code>## [1] 8</code></pre>
 </div>
 </div>
@@ -88,26 +106,26 @@ square &lt;-<span class="st"> </span><span class="kw">power</span>(<span class="
 <table>
 <thead>
 <tr class="header">
-<th align="left"></th>
-<th align="left"><strong>Homogeneous</strong></th>
-<th align="left"><strong>Heterogeneous</strong></th>
+<th></th>
+<th><strong>Homogeneous</strong></th>
+<th><strong>Heterogeneous</strong></th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">1d</td>
-<td align="left">Atomic Vector</td>
-<td align="left">List</td>
+<td>1d</td>
+<td>Atomic Vector</td>
+<td>List</td>
 </tr>
 <tr class="even">
-<td align="left">2d</td>
-<td align="left">Matrix</td>
-<td align="left">Data Frame</td>
+<td>2d</td>
+<td>Matrix</td>
+<td>Data Frame</td>
 </tr>
 <tr class="odd">
-<td align="left">nd</td>
-<td align="left">Array</td>
-<td align="left"></td>
+<td>nd</td>
+<td>Array</td>
+<td></td>
 </tr>
 </tbody>
 </table>
@@ -115,32 +133,32 @@ square &lt;-<span class="st"> </span><span class="kw">power</span>(<span class="
 <div id="primitive-parsers" class="section level2">
 <h2>Primitive parsers</h2>
 <p><code>succeed</code> is based on the empty string symbol in the BNF notation The <code>succeed</code> parser always succeeds, without actually consuming any input string. Since the outcome of succeed does not depend on its input, its resultvalue must be pre-detemined, so it is included as an extra parameter.</p>
-<pre class="sourceCode r"><code class="sourceCode r">succeed &lt;-<span class="st"> </span>function(string) {
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">succeed &lt;-<span class="st"> </span>function(string) {
   <span class="kw">return</span>(function(nextString) {
     <span class="kw">return</span>(<span class="kw">list</span>(<span class="dt">result =</span> string, <span class="dt">leftover=</span>nextString))
   })
 }
-<span class="kw">succeed</span>(<span class="st">&quot;1&quot;</span>) (<span class="st">&quot;abc&quot;</span>)</code></pre>
+<span class="kw">succeed</span>(<span class="st">&quot;1&quot;</span>) (<span class="st">&quot;abc&quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## [1] &quot;1&quot;
 ## 
 ## $leftover
 ## [1] &quot;abc&quot;</code></pre>
 <p>The next function <code>item</code>, allows us to consume the first character of the string and return the rest. If it cannot consume a single character from the string it will emit the empty list, indicating the parser has failed.</p>
-<pre class="sourceCode r"><code class="sourceCode r">item &lt;-<span class="st"> </span>function(...){
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">item &lt;-<span class="st"> </span>function(...){
   <span class="kw">return</span>(function(string){
     if(<span class="kw">length</span>(string)==<span class="dv">0</span>){<span class="kw">return</span>(<span class="ot">NULL</span>)}
     <span class="kw">return</span> (if(string==<span class="st">&quot;&quot;</span>) <span class="kw">list</span>() else <span class="kw">list</span>(<span class="dt">result=</span><span class="kw">substr</span>(string, <span class="dv">1</span>, <span class="dv">1</span>), <span class="dt">leftover=</span><span class="kw">substring</span>(string, <span class="dv">2</span>)))
   })
 }
-<span class="kw">item</span>() (<span class="st">&quot;abc&quot;</span>)</code></pre>
+<span class="kw">item</span>() (<span class="st">&quot;abc&quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## [1] &quot;a&quot;
 ## 
 ## $leftover
 ## [1] &quot;bc&quot;</code></pre>
 <p><code>item</code> can be further rewritten in a more useful way. The <code>satisfy</code> function allows us to make parsers that recognise single symbols. Rather than enumerating the acceptable symbols, we will allow a predicate to be set, which determines if an arbitary symbol is a member. Successful parses return the consumed symbol as their result value.</p>
-<pre class="sourceCode r"><code class="sourceCode r">satisfy &lt;-<span class="st"> </span>function(p) {
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">satisfy &lt;-<span class="st"> </span>function(p) {
   <span class="kw">return</span>(function(string) {
     if (<span class="kw">length</span>(string)==<span class="dv">0</span>) {
       <span class="kw">return</span>(<span class="kw">list</span>())
@@ -159,17 +177,17 @@ square &lt;-<span class="st"> </span><span class="kw">power</span>(<span class="
     }    
   })
 }
-<span class="kw">satisfy</span>(function(x) {x ==<span class="st"> &quot;a&quot;</span>}) (<span class="st">&quot;abc&quot;</span>)</code></pre>
+<span class="kw">satisfy</span>(function(x) {x ==<span class="st"> &quot;a&quot;</span>}) (<span class="st">&quot;abc&quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## [1] &quot;a&quot;
 ## 
 ## $leftover
 ## [1] &quot;bc&quot;</code></pre>
 <p>Using <code>satisfy</code> we can define a parser for single symbols:</p>
-<pre class="sourceCode r"><code class="sourceCode r">literal &lt;-<span class="st"> </span>function(char) {
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">literal &lt;-<span class="st"> </span>function(char) {
   <span class="kw">satisfy</span>(function(x){<span class="kw">return</span>(x==char)})
 }
-<span class="kw">literal</span>(<span class="st">&quot;a&quot;</span>) (<span class="st">&quot;abc&quot;</span>)</code></pre>
+<span class="kw">literal</span>(<span class="st">&quot;a&quot;</span>) (<span class="st">&quot;abc&quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## [1] &quot;a&quot;
 ## 
@@ -180,7 +198,7 @@ square &lt;-<span class="st"> </span><span class="kw">power</span>(<span class="
 <h2>Combinators</h2>
 <p>Now that we have the basic building blocks, we consider how they should be put together to form useful parsers. In BNF notation, larger grammars are built price-wise from smaller ones using <code>|</code> to denote alternation, and juxtaposition to indicate sequencing. So taht our parasers resemble BNF notation, we define higher order functions which correspond directly to these operators. Since higher order functions like these combine parsers to form other parsers, they are often referreedto as combinators.</p>
 <p>The <code>alt</code> combinator corresponds to alternation in BNF. The parser <code>alt(p1, p2)</code> recognises anything that <code>p1</code> or <code>p2</code> would. The approach taken in this parser follows (Fairbairn86), in which either is interpretted in a sequential (or exclusive) manner, returning the results of the first parser to succeed, and failure if neither does. Note that we use the infix notation <code>`%f%`</code> to convert <code>alt</code> to an infix operator. The infix notation is merely a syntactic convenience: <code>(a `%f%` b)</code> is equivalent to <code>(f (a,b))</code>.</p>
-<pre class="sourceCode r"><code class="sourceCode r">alt &lt;-<span class="st"> </span>function(p1, p2) {
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">alt &lt;-<span class="st"> </span>function(p1, p2) {
   <span class="kw">return</span>(function(string){
     result &lt;-<span class="st"> </span><span class="kw">p1</span> (string)
     if(!<span class="kw">is.null</span>(result$leftover)) {<span class="kw">return</span>(result)}
@@ -190,20 +208,20 @@ square &lt;-<span class="st"> </span><span class="kw">power</span>(<span class="
   })
 }
 <span class="st">`</span><span class="dt">%alt%</span><span class="st">`</span> &lt;-<span class="st"> </span>alt
-(<span class="kw">item</span>() %alt%<span class="st"> </span><span class="kw">succeed</span>(<span class="st">&quot;2&quot;</span>))(<span class="st">&quot;abcdef&quot;</span>)</code></pre>
+(<span class="kw">item</span>() %alt%<span class="st"> </span><span class="kw">succeed</span>(<span class="st">&quot;2&quot;</span>))(<span class="st">&quot;abcdef&quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## [1] &quot;a&quot;
 ## 
 ## $leftover
 ## [1] &quot;bcdef&quot;</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">alt</span>(<span class="kw">item</span>(), <span class="kw">succeed</span>(<span class="st">&quot;2&quot;</span>)) (<span class="st">&quot;abcdef&quot;</span>)</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">alt</span>(<span class="kw">item</span>(), <span class="kw">succeed</span>(<span class="st">&quot;2&quot;</span>)) (<span class="st">&quot;abcdef&quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## [1] &quot;a&quot;
 ## 
 ## $leftover
 ## [1] &quot;bcdef&quot;</code></pre>
 <p>The <code>then</code> combinator corresponds to sequencing in BNF. The parser(<code>p1 %then% p2</code>) recognises anything that <code>p1</code> and <code>p2</code> would if placed in succession.</p>
-<pre class="sourceCode r"><code class="sourceCode r">then &lt;-<span class="st"> </span>function(p1, p2) {
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">then &lt;-<span class="st"> </span>function(p1, p2) {
   <span class="kw">return</span>(function(string) {
     result &lt;-<span class="st"> </span><span class="kw">p1</span> (string)
     if (<span class="kw">length</span>(result) ==<span class="st"> </span><span class="dv">0</span>) {
@@ -217,7 +235,7 @@ square &lt;-<span class="st"> </span><span class="kw">power</span>(<span class="
   })
 }
 <span class="st">`</span><span class="dt">%then%</span><span class="st">`</span> &lt;-<span class="st"> </span>then
-(<span class="kw">literal</span>(<span class="st">&quot;a&quot;</span>) %then%<span class="st"> </span><span class="kw">literal</span>(<span class="st">&quot;b&quot;</span>)) (<span class="st">&quot;abc&quot;</span>)</code></pre>
+(<span class="kw">literal</span>(<span class="st">&quot;a&quot;</span>) %then%<span class="st"> </span><span class="kw">literal</span>(<span class="st">&quot;b&quot;</span>)) (<span class="st">&quot;abc&quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## $result[[1]]
 ## [1] &quot;a&quot;
@@ -232,7 +250,7 @@ square &lt;-<span class="st"> </span><span class="kw">power</span>(<span class="
 <div id="manipulating-values" class="section level2">
 <h2>Manipulating Values</h2>
 <p>Part of the result from a parser is a value. The <code>using</code> combinator allows us to manipulate these results, building a parse tree being the most common application. The parser(<code>p %using% f</code>) has the same behaviour as the parser <code>p</code>, except that the function <code>f</code> is aplied to each of the result values:</p>
-<pre class="sourceCode r"><code class="sourceCode r">using &lt;-<span class="st"> </span>function(p, f) {
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">using &lt;-<span class="st"> </span>function(p, f) {
   <span class="kw">return</span>(function(string) {
     result &lt;-<span class="st"> </span><span class="kw">p</span> (string) 
     if(<span class="kw">length</span>(result) ==<span class="st"> </span><span class="dv">0</span>) {<span class="kw">return</span>(<span class="kw">list</span>())}
@@ -241,7 +259,7 @@ square &lt;-<span class="st"> </span><span class="kw">power</span>(<span class="
   })
 }
 <span class="st">`</span><span class="dt">%using%</span><span class="st">`</span> &lt;-<span class="st"> </span>using
-(<span class="kw">item</span>() %using%<span class="st"> </span>function(x) {<span class="kw">as.numeric</span>(x) +<span class="st"> </span><span class="dv">100</span>}) (<span class="st">&quot;1abc&quot;</span>)</code></pre>
+(<span class="kw">item</span>() %using%<span class="st"> </span>function(x) {<span class="kw">as.numeric</span>(x) +<span class="st"> </span><span class="dv">100</span>}) (<span class="st">&quot;1abc&quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## [1] 101
 ## 
@@ -249,12 +267,12 @@ square &lt;-<span class="st"> </span><span class="kw">power</span>(<span class="
 ## [1] &quot;abc&quot;</code></pre>
 <p>Although <code>using</code> has no counterpart in pure BNF notation, it does have much in common with the <code>{...}</code> operator in Yacc (Aho86). In fact, the <code>using</code> combinator does not restrict us to building parse trees. Arbitrary semantic actions can be used.</p>
 <p>In BNF notation, repetition occurs often enough to merit its own abbreviation. When zero or more repetitions of a phrase <code>p</code> are admissible, we simply write <code>p*</code>. Formally, this notation is defined by the equation <code>p* = p p * | e</code>. The <code>many</code> combinator corresponds directly to this operator, and is defined in much the same way:</p>
-<pre class="sourceCode r"><code class="sourceCode r">many &lt;-<span class="st"> </span>function(p) {
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">many &lt;-<span class="st"> </span>function(p) {
   <span class="kw">return</span>(function(string) {
     ((p %then%<span class="st"> </span><span class="kw">many</span>(p)) %alt%<span class="st"> </span><span class="kw">succeed</span>(<span class="ot">NULL</span>)) (string)
   })
 }
-<span class="kw">many</span>(<span class="kw">literal</span>(<span class="st">&quot;1&quot;</span>)) (<span class="st">&quot;111223&quot;</span>)</code></pre>
+<span class="kw">many</span>(<span class="kw">literal</span>(<span class="st">&quot;1&quot;</span>)) (<span class="st">&quot;111223&quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## $result[[1]]
 ## [1] &quot;1&quot;
@@ -269,12 +287,12 @@ square &lt;-<span class="st"> </span><span class="kw">power</span>(<span class="
 ## $leftover
 ## [1] &quot;223&quot;</code></pre>
 <p>Nor surprisingly, the next parser corresponds to the other common iterative form in BNF, defined by <code>p+ = p p*</code>. The parser (<code>some p</code>) has the same behaviour as (<code>many p</code>), except that it accepts one or more repetitions of <code>p</code>, rather of zero or more:</p>
-<pre class="sourceCode r"><code class="sourceCode r">some &lt;-<span class="st"> </span>function(p) {
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">some &lt;-<span class="st"> </span>function(p) {
   <span class="kw">return</span>(function(string){
     (p %then%<span class="st"> </span><span class="kw">many</span>(p)) (string)
   })
 }
-<span class="kw">some</span>(<span class="kw">literal</span>(<span class="st">&quot;a&quot;</span>))(<span class="st">&quot;aaabbc&quot;</span>)</code></pre>
+<span class="kw">some</span>(<span class="kw">literal</span>(<span class="st">&quot;a&quot;</span>))(<span class="st">&quot;aaabbc&quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## $result[[1]]
 ## [1] &quot;a&quot;
@@ -294,14 +312,14 @@ square &lt;-<span class="st"> </span><span class="kw">power</span>(<span class="
 <h2>Derived Primitives</h2>
 <p>Using the basic parsers together with sequencing and choice, we can now define a number of other useful parsing primitives.</p>
 <p>Firstly using <code>satisfy</code> with the appropriate predicates, we can define parsers for single digits, lower-case letters, upper-case letters, arbitrary letters, alphanumeric characters, and specific characters. We have already demonstrated how we can parser specific characters (see <code>literal</code>), but the others can be defined in a similar way:</p>
-<pre class="sourceCode r"><code class="sourceCode r">Digit &lt;-<span class="st"> </span>function(...) {<span class="kw">satisfy</span>(function(x) {<span class="kw">return</span>(!!<span class="kw">length</span>(<span class="kw">grep</span>(<span class="st">&quot;[0-9]&quot;</span>, x)))})}
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">Digit &lt;-<span class="st"> </span>function(...) {<span class="kw">satisfy</span>(function(x) {<span class="kw">return</span>(!!<span class="kw">length</span>(<span class="kw">grep</span>(<span class="st">&quot;[0-9]&quot;</span>, x)))})}
 Lower &lt;-<span class="st"> </span>function(...) {<span class="kw">satisfy</span>(function(x) {<span class="kw">return</span>(!!<span class="kw">length</span>(<span class="kw">grep</span>(<span class="st">&quot;[a-z]&quot;</span>, x)))})}
 Upper &lt;-<span class="st"> </span>function(...) <span class="kw">satisfy</span>(function(x) {<span class="kw">return</span>(!!<span class="kw">length</span>(<span class="kw">grep</span>(<span class="st">&quot;[A-Z]&quot;</span>, x)))})
 Alpha &lt;-<span class="st"> </span>function(...) <span class="kw">satisfy</span>(function(x) {<span class="kw">return</span>(!!<span class="kw">length</span>(<span class="kw">grep</span>(<span class="st">&quot;[A-Za-z]&quot;</span>, x)))})
 AlphaNum &lt;-<span class="st"> </span>function(...) <span class="kw">satisfy</span>(function(x) {<span class="kw">return</span>(!!<span class="kw">length</span>(<span class="kw">grep</span>(<span class="st">&quot;[A-Za-z0-9]&quot;</span>, x)))})
-SpaceCheck &lt;-<span class="st"> </span>function(...) <span class="kw">satisfy</span>(function(x) {<span class="kw">return</span>(!!<span class="kw">length</span>(<span class="kw">grep</span>(<span class="st">&quot;</span><span class="ch">\\</span><span class="st">s&quot;</span>, x)))})</code></pre>
+SpaceCheck &lt;-<span class="st"> </span>function(...) <span class="kw">satisfy</span>(function(x) {<span class="kw">return</span>(!!<span class="kw">length</span>(<span class="kw">grep</span>(<span class="st">&quot;</span><span class="ch">\\</span><span class="st">s&quot;</span>, x)))})</code></pre></div>
 <p>In a similar many we can define a parser <code>String</code> for the string of characters, with the string itself returned as the result value:</p>
-<pre class="sourceCode r"><code class="sourceCode r">String &lt;-<span class="st"> </span>function(string) {
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">String &lt;-<span class="st"> </span>function(string) {
   if (string==<span class="st">&quot;&quot;</span>) {
     <span class="kw">return</span> (<span class="kw">succeed</span>(<span class="ot">NULL</span>))
   }
@@ -313,7 +331,7 @@ SpaceCheck &lt;-<span class="st"> </span>function(...) <span class="kw">satisfy<
 <span class="st">             </span>function(x) {<span class="kw">paste</span>(<span class="kw">unlist</span>(<span class="kw">c</span>(x)), <span class="dt">collapse=</span><span class="st">&quot;&quot;</span>)})
   }
 }
-<span class="kw">String</span>(<span class="st">&quot;123&quot;</span>)(<span class="st">&quot;123 abc&quot;</span>)</code></pre>
+<span class="kw">String</span>(<span class="st">&quot;123&quot;</span>)(<span class="st">&quot;123 abc&quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## [1] &quot;123&quot;
 ## 
@@ -321,7 +339,7 @@ SpaceCheck &lt;-<span class="st"> </span>function(...) <span class="kw">satisfy<
 ## [1] &quot; abc&quot;</code></pre>
 <p>Note that <code>String</code> is defined using recursion, and only succeeds if the entire target string is consumed. The base case states that the empty string is always parsed. The recursive case states that a non-empty string can be parsed by parsing the first character, parsing the remaining characters, and returning the entire string as the result value.</p>
 <p>Similarly we can create parsers to match identifiers (<code>ident</code>), natural numbers (<code>nat</code>), spaces (<code>space</code>):</p>
-<pre class="sourceCode r"><code class="sourceCode r">ident &lt;-<span class="st"> </span>function() {(<span class="kw">many</span>(<span class="kw">AlphaNum</span>()) %using%
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">ident &lt;-<span class="st"> </span>function() {(<span class="kw">many</span>(<span class="kw">AlphaNum</span>()) %using%
 <span class="st">          </span>function(x) <span class="kw">paste0</span>(<span class="kw">unlist</span>(<span class="kw">c</span>(x)), <span class="dt">collapse=</span><span class="st">&quot;&quot;</span>))}
 nat &lt;-<span class="st"> </span>function() {
   <span class="kw">some</span>(<span class="kw">Digit</span>()) %using%
@@ -331,13 +349,13 @@ space &lt;-<span class="st"> </span>function() {
   <span class="kw">many</span>(<span class="kw">SpaceCheck</span>()) %using%
 <span class="st">  </span>function(x) {<span class="kw">return</span>(<span class="st">&quot;&quot;</span>)}
 }
-<span class="kw">ident</span>() (<span class="st">&quot;var1 = 123&quot;</span>)</code></pre>
+<span class="kw">ident</span>() (<span class="st">&quot;var1 = 123&quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## [1] &quot;var1&quot;
 ## 
 ## $leftover
 ## [1] &quot; = 123&quot;</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">nat</span>() (<span class="st">&quot;123456&quot;</span>)</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">nat</span>() (<span class="st">&quot;123456&quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## [1] &quot;123456&quot;
 ## 
@@ -347,23 +365,23 @@ space &lt;-<span class="st"> </span>function() {
 <div id="handling-spacing" class="section level2">
 <h2>Handling spacing</h2>
 <p>To handle spaces we will define a new primitive <code>token</code> which ignores any space before and after applying a parser for a token:</p>
-<pre class="sourceCode r"><code class="sourceCode r">token &lt;-<span class="st"> </span>function(p) {
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">token &lt;-<span class="st"> </span>function(p) {
   <span class="kw">space</span>() %then%
 <span class="st">    </span>p %then%
 <span class="st">    </span><span class="kw">space</span>() %using%
 <span class="st">    </span>function(x) {<span class="kw">return</span>(<span class="kw">unlist</span>(<span class="kw">c</span>(x))[<span class="dv">2</span>])}
 }
-<span class="kw">token</span>(<span class="kw">ident</span>()) (<span class="st">&quot;   var1   &quot;</span>)</code></pre>
+<span class="kw">token</span>(<span class="kw">ident</span>()) (<span class="st">&quot;   var1   &quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## [1] &quot;var1&quot;
 ## 
 ## $leftover
 ## [1] &quot;&quot;</code></pre>
 <p>This can then be expanded for identifiers, natural numbers and symbols:</p>
-<pre class="sourceCode r"><code class="sourceCode r">identifier &lt;-<span class="st"> </span>function(...) {<span class="kw">token</span>(<span class="kw">ident</span>())}
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">identifier &lt;-<span class="st"> </span>function(...) {<span class="kw">token</span>(<span class="kw">ident</span>())}
 natural &lt;-<span class="st"> </span>function(...) {<span class="kw">token</span>(<span class="kw">nat</span>())}
 symbol &lt;-<span class="st"> </span>function(xs) {<span class="kw">token</span>(<span class="kw">String</span>(xs))}
-<span class="kw">identifier</span>() (<span class="st">&quot;   var1   &quot;</span>)</code></pre>
+<span class="kw">identifier</span>() (<span class="st">&quot;   var1   &quot;</span>)</code></pre></div>
 <pre><code>## $result
 ## [1] &quot;var1&quot;
 ## 
@@ -380,7 +398,7 @@ expr :: = term + term | term - term | term
 term :: = factor * factor | factor / factor | factor
 factor :: = (expr) | digit+</code></pre>
 <p>Having this structure allows multiplication and divsion to have higher precedence than addition and subtraction. We can simply rewrite the BNF grammar above as follows:</p>
-<pre class="sourceCode r"><code class="sourceCode r">expr &lt;-<span class="st"> </span>((term %then%<span class="st"> </span>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">expr &lt;-<span class="st"> </span>((term %then%<span class="st"> </span>
 <span class="st">            </span><span class="kw">symbol</span>(<span class="st">&quot;+&quot;</span>) %then%
 <span class="st">            </span>expr %using%<span class="st"> </span>function(x) {
               <span class="kw">print</span>(<span class="kw">unlist</span>(<span class="kw">c</span>(x)))
@@ -412,9 +430,9 @@ factor &lt;-<span class="st"> </span>((<span class="kw">symbol</span>(<span clas
 <span class="st">            </span><span class="kw">symbol</span>(<span class="st">&quot;)&quot;</span>) %using%<span class="st"> </span>function(x){
               <span class="kw">print</span>(<span class="kw">unlist</span>(<span class="kw">c</span>(x)))
               <span class="kw">return</span>(<span class="kw">as.numeric</span>(<span class="kw">unlist</span>(<span class="kw">c</span>(x))[<span class="dv">2</span>]))
-            }) %alt%<span class="st"> </span><span class="kw">natural</span>())</code></pre>
+            }) %alt%<span class="st"> </span><span class="kw">natural</span>())</code></pre></div>
 <p>This will evaluate the arithmetic expressions:</p>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">expr</span>(<span class="st">&quot;2+(4-1)*3&quot;</span>)</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">expr</span>(<span class="st">&quot;2+(4-1)*3&quot;</span>)</code></pre></div>
 <pre><code>## [1] &quot;4&quot; &quot;-&quot; &quot;1&quot;
 ## [1] &quot;(&quot; &quot;3&quot; &quot;)&quot;
 ## [1] &quot;3&quot; &quot;*&quot; &quot;3&quot;
